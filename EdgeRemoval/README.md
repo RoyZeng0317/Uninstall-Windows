@@ -35,13 +35,39 @@ Enable-ComputerRestore -Drive "C:\"
 Checkpoint-Computer -Description "Before-Edge-Removal-Tool" -RestorePointType "MODIFY_SETTINGS"
 ```
 
-### 執行移除
+> 若最近 24 小時內已經建立過還原點,系統預設每 1440 分鐘只允許建立一次,這裡會顯示警告但不影響後續步驟,可以忽略繼續。
 
-見同目錄下的 [`Uninstall-Edge.ps1`](./Uninstall-Edge.ps1),已把以上步驟整合成一個腳本。用系統管理員身分執行:
+### 方法 A(推薦):直接安裝 .msi,雙擊執行
+
+不需要裝 Git、不需要處理 PowerShell 執行原則、不需要貼指令。下載 [`dist/Uninstall-Edge.msi`](./dist/Uninstall-Edge.msi),**直接雙擊**:
+
+1. 雙擊 `Uninstall-Edge.msi`
+2. 跳出 UAC 提示,按「是」授權
+3. 安裝程式會自動以系統管理員權限執行移除腳本(略過還原點的互動確認,無人值守模式)
+4. 完成後,可在 `C:\Program Files\Uninstall-Edge-Tool\Uninstall-Edge.log` 查看完整執行紀錄,確認 Edge 是否移除成功
+5. 想重跑一次,先在「設定 → 應用程式」移除 **Uninstall Edge Tool**,再重新雙擊 msi 即可(這個安裝包本身不是要長期保留的軟體,只是包裝移除動作用的載體)
+
+> 這個 msi 是用 [WiX Toolset](https://wixtoolset.org/) 從同目錄的 [`Uninstall-Edge.ps1`](./Uninstall-Edge.ps1) 打包出來的,行為與方法 B 完全一致,只是省去手動開 PowerShell 的步驟。維護者如需重新編譯,見 [`installer/build-msi.ps1`](./installer/build-msi.ps1)。
+
+### 方法 B:手動執行 PowerShell 腳本
+
+見同目錄下的 [`Uninstall-Edge.ps1`](./Uninstall-Edge.ps1),已把以上步驟整合成一個腳本。**先切換到這個腳本所在的資料夾**,再用系統管理員身分執行:
 
 ```powershell
+cd "路徑\到\Uninstall-Windows\EdgeRemoval"
 .\Uninstall-Edge.ps1
 ```
+
+腳本內部會自己判斷目前是否為系統管理員權限,不是的話會自動跳出 UAC 提示重新啟動,**不需要**先另外開一個系統管理員 PowerShell 視窗再執行一次。
+
+## 疑難排解(方法 B,手動執行腳本時)
+
+| 錯誤訊息 | 原因 | 解法 |
+|---|---|---|
+| `.\Uninstall-Edge.ps1 : 無法辨識...詞彙是否為 Cmdlet...` | 目前所在目錄不是腳本所在的資料夾,`.\` 相對路徑找不到檔案 | 先 `cd` 到 `EdgeRemoval` 資料夾,或改用完整路徑執行 |
+| `因為這個系統上已停用指令碼執行...` | PowerShell 執行原則(Execution Policy)預設是 `Restricted`,擋掉所有 `.ps1` | 在同一個視窗先執行 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force`,只影響當前視窗,關掉就恢復,不動系統設定 |
+
+如果不想處理這兩個坑,直接用**方法 A 的 .msi** 即可,雙擊沒有這些問題。
 
 ## 執行後驗證清單
 

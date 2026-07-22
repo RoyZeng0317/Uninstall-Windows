@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Uninstall Microsoft Edge Tool"
+           Manufacturer="Uninstall-Windows Toolkit"
+           Version="1.0.0.0"
+           UpgradeCode="BFB307C2-8FF1-4868-9084-8E29C486ACB4"
+           Scope="perMachine"
+           Language="1028">
+
+    <SummaryInformation Description="徹底移除 Microsoft Edge 的安裝程式" />
+
+    <MajorUpgrade DowngradeErrorMessage="已安裝較新版本的 Uninstall Edge Tool,請先移除。" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Uninstall-Edge-Tool">
+        <Component Id="ScriptFiles" Guid="F4B4CB86-273B-45F3-9DE2-9CA56DF2A6A9">
+          <File Id="UninstallEdgePs1" Source="..\Uninstall-Edge.ps1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Uninstall Edge Tool" Level="1">
+      <ComponentRef Id="ScriptFiles" />
+    </Feature>
+
+    <!--
+      安裝時(perMachine → 雙擊自動觸發 UAC 提權)執行實際的移除腳本。
+      Execute="deferred" + Impersonate="no" → 以 SYSTEM 身分於提升的安裝工作階段執行,
+      腳本本身以 -Unattended 呼叫,略過自我提權判斷與所有互動式提示(Session 0 無桌面)。
+      Return="ignore" → 移除本體是否完全成功不影響「安裝」本身回報成功,
+      結果請查看安裝目錄下的 Uninstall-Edge.log。
+    -->
+    <CustomAction Id="RunUninstallEdge"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Uninstall-Edge.ps1&quot; -Unattended"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RunUninstallEdge" After="InstallFiles" Condition="NOT Installed" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>
