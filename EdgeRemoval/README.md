@@ -39,7 +39,7 @@ Checkpoint-Computer -Description "Before-Edge-Removal-Tool" -RestorePointType "M
 
 ### 方法 A(推薦):直接安裝 .msi,雙擊執行
 
-不需要裝 Git、不需要處理 PowerShell 執行原則、不需要貼指令。下載 [`dist/Uninstall-Edge.msi`](./dist/Uninstall-Edge.msi),**直接雙擊**:
+不需要裝 Git、不需要處理 PowerShell 執行原則、不需要貼指令。下載 [`Uninstall-Edge.msi`](https://github.com/RoyZeng0317/Uninstall-Windows/releases/download/v1.0.0/Uninstall-Edge.msi)(點擊連結會直接觸發瀏覽器下載,不會先跳到 GitHub 網頁預覽),**直接雙擊**:
 
 1. 雙擊 `Uninstall-Edge.msi`
 2. 跳出 UAC 提示,按「是」授權
