@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Uninstall McAfee Tool"
+           Manufacturer="Uninstall-Windows Toolkit"
+           Version="1.0.0.0"
+           UpgradeCode="1D760963-9454-475C-8D65-465F988F6E78"
+           Scope="perMachine"
+           Language="1028">
+
+    <SummaryInformation Description="徹底移除 McAfee 的安裝程式(當控制台/設定 App 無法強制解除安裝時使用)" />
+
+    <MajorUpgrade DowngradeErrorMessage="已安裝較新版本的 Uninstall McAfee Tool,請先移除。" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Uninstall-McAfee-Tool">
+        <Component Id="ScriptFiles" Guid="6AAEE859-E3B5-483A-B8D1-1BEADC12C5CE">
+          <File Id="UninstallMcAfeePs1" Source="..\Uninstall-McAfee.ps1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Uninstall McAfee Tool" Level="1">
+      <ComponentRef Id="ScriptFiles" />
+    </Feature>
+
+    <!--
+      McAfee 官方的移除工具(MCPR.exe)一定會跳出精靈視窗讓使用者操作(新版
+      已不支援可靠的靜默安裝參數),所以這裡「不能」像 Edge 那樣用
+      Execute="deferred" + Impersonate="no" 讓它以 SYSTEM 身分在 Session 0
+      背景執行 —— Session 0 沒有桌面,GUI 會顯示不出來,使用者也無從點擊,
+      整個安裝流程會卡住。
+
+      改用 Execute="immediate"(預設值,省略不寫):這種 CustomAction 是在
+      呼叫 msiexec 的用戶端行程裡執行,也就是使用者當下這個已提權
+      (雙擊 msi 觸發 UAC)的互動式工作階段,所以 MCPR 的視窗可以正常顯示、
+      使用者也能正常點擊操作。腳本以 -Unattended 呼叫,只是為了略過腳本
+      自身「是否要在沒有還原點的情況下繼續」這個問題,並不影響 MCPR 本身
+      跳出的視窗。
+
+      Return="ignore" → 移除本體是否完全成功不影響「安裝」本身回報成功,
+      結果請查看安裝目錄下的 Uninstall-McAfee.log。
+    -->
+    <CustomAction Id="RunUninstallMcAfee"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Uninstall-McAfee.ps1&quot; -Unattended"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RunUninstallMcAfee" After="InstallFiles" Condition="NOT Installed" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>
