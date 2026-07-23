@@ -32,7 +32,7 @@ Checkpoint-Computer -Description "Before-McAfee-Removal-Tool" -RestorePointType 
 
 ### 方法 A(推薦):直接安裝 .msi,雙擊執行
 
-不需要裝 Git、不需要處理 PowerShell 執行原則、不需要貼指令。下載 [`Uninstall-McAfee.msi`](./Dist/Uninstall-McAfee.msi),**直接雙擊**:
+不需要裝 Git、不需要處理 PowerShell 執行原則、不需要貼指令。下載 [`Uninstall-McAfee.msi`](https://github.com/RoyZeng0317/Uninstall-Windows/releases/download/mcafee-v1.0.0/Uninstall-McAfee.msi)(點擊連結會直接觸發瀏覽器下載,不會先跳到 GitHub 網頁預覽),**直接雙擊**:
 
 1. 雙擊 `Uninstall-McAfee.msi`
 2. 跳出 UAC 提示,按「是」授權
