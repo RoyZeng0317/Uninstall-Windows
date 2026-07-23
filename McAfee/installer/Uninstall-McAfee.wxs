@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <Package Name="Uninstall McAfee Tool"
            Manufacturer="Uninstall-Windows Toolkit"
            Version="1.0.0.0"
            UpgradeCode="1D760963-9454-475C-8D65-465F988F6E78"
            Scope="perMachine"
-           Language="1028">
+           Language="1028"
+           Codepage="65001">
 
     <SummaryInformation Description="徹底移除 McAfee 的安裝程式(當控制台/設定 App 無法強制解除安裝時使用)" />
 
@@ -20,34 +23,71 @@
       </Directory>
     </StandardDirectory>
 
+    <!--
+      為什麼不直接在 InstallExecuteSequence 裡跑腳本(像 EdgeRemoval 那樣)?
+
+      實測發現:不管 CustomAction 設 Execute="immediate" 還是 "deferred"、
+      Impersonate="yes" 還是 "no",只要是排在 InstallExecuteSequence 裡,
+      實際執行的都是 Windows Installer 的 msiserver 服務(以 SYSTEM 身分、
+      在 Session 0 執行),不是雙擊 msi 那個互動式視窗所在的行程。Session 0
+      沒有桌面,所以 MCPR.exe 的視窗完全顯示不出來,且因為
+      Return="ignore",連錯誤都不會被看到 —— 這正是先前版本「雙擊 msi 卻
+      沒有任何反應」的真正原因(EdgeRemoval 能用同樣寫法是因為 Edge.bat
+      全程不需要 GUI,靠寫 log 檔驗證結果就夠了;MCPR 做不到)。
+
+      正確做法是 Windows Installer 官方就支援的「安裝完成後啟動應用程式」
+      模式:把捷徑安裝到開始功能表,並透過 ExitDialog 的「完成」按鈕勾選框
+      (WixShellExecTarget + WixShellExec)在使用者當下的互動式工作階段
+      啟動它 —— 這個路徑跑在用戶端 msiexec 行程裡,不是 msiserver 服務,
+      所以視窗看得到、也能正常點擊操作 MCPR 的精靈畫面。
+      同時保留開始功能表捷徑,之後(例如 McAfee 又被 Windows Update 裝回來)
+      不需要重灌 msi,直接點捷徑重跑即可。
+    -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppProgramMenuFolder" Name="Uninstall McAfee Tool">
+        <Component Id="AppShortcut" Guid="8B022893-F099-4906-8BC0-E06A51D5D67D">
+          <Shortcut Id="UninstallMcAfeeShortcut"
+                    Name="解除安裝 McAfee"
+                    Description="執行 McAfee 官方移除工具(需要系統管理員權限,會跳出 McAfee 移除精靈視窗)"
+                    Target="[SystemFolder]WindowsPowerShell\v1.0\powershell.exe"
+                    Arguments="-NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Uninstall-McAfee.ps1&quot;"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="RemoveAppProgramMenuFolder" On="uninstall" />
+          <RegistryValue Root="HKLM"
+                          Key="Software\Uninstall-Windows-Toolkit\Uninstall-McAfee-Tool"
+                          Name="Installed"
+                          Type="integer"
+                          Value="1"
+                          KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
     <Feature Id="Main" Title="Uninstall McAfee Tool" Level="1">
       <ComponentRef Id="ScriptFiles" />
+      <ComponentRef Id="AppShortcut" />
     </Feature>
 
     <!--
-      McAfee 官方的移除工具(MCPR.exe)一定會跳出精靈視窗讓使用者操作(新版
-      已不支援可靠的靜默安裝參數),所以這裡「不能」像 Edge 那樣用
-      Execute="deferred" + Impersonate="no" 讓它以 SYSTEM 身分在 Session 0
-      背景執行 —— Session 0 沒有桌面,GUI 會顯示不出來,使用者也無從點擊,
-      整個安裝流程會卡住。
-
-      改用 Execute="immediate"(預設值,省略不寫):這種 CustomAction 是在
-      呼叫 msiexec 的用戶端行程裡執行,也就是使用者當下這個已提權
-      (雙擊 msi 觸發 UAC)的互動式工作階段,所以 MCPR 的視窗可以正常顯示、
-      使用者也能正常點擊操作。腳本以 -Unattended 呼叫,只是為了略過腳本
-      自身「是否要在沒有還原點的情況下繼續」這個問題,並不影響 MCPR 本身
-      跳出的視窗。
-
-      Return="ignore" → 移除本體是否完全成功不影響「安裝」本身回報成功,
-      結果請查看安裝目錄下的 Uninstall-McAfee.log。
+      安裝完成畫面「完成」按鈕勾選框 → 在使用者的互動式工作階段啟動捷徑。
+      WixShellExecTarget 的值需要展開 [AppProgramMenuFolder] 這個目錄權杖,
+      而 <Property Value="..."> 是字面值、不會展開,所以改用
+      CustomAction 的 Property+Value(Type 51,設定屬性時會用格式化字串
+      展開權杖)在安裝流程跑到之前先把值算出來。
     -->
-    <CustomAction Id="RunUninstallMcAfee"
-                  Directory="INSTALLFOLDER"
-                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Uninstall-McAfee.ps1&quot; -Unattended"
-                  Return="ignore" />
+    <CustomAction Id="SetShellExecTarget" Property="WixShellExecTarget" Value="[AppProgramMenuFolder]解除安裝 McAfee.lnk" />
+    <CustomAction Id="LaunchApplication" BinaryRef="Wix4UtilCA_X86" DllEntry="WixShellExec" Impersonate="yes" />
 
-    <InstallExecuteSequence>
-      <Custom Action="RunUninstallMcAfee" After="InstallFiles" Condition="NOT Installed" />
-    </InstallExecuteSequence>
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUIExitDialogOptionalCheckboxText" Value="安裝完成後立即執行 McAfee 解除安裝(會跳出 McAfee 官方移除精靈視窗)" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+
+    <InstallUISequence>
+      <Custom Action="SetShellExecTarget" Before="ExecuteAction" Condition="NOT Installed" />
+    </InstallUISequence>
+
+    <UI>
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchApplication" Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
   </Package>
 </Wix>

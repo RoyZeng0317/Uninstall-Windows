@@ -19,15 +19,28 @@ if (-not (Get-Command wix -ErrorAction SilentlyContinue)) {
     dotnet tool install --global wix --version 5.0.2
 }
 
+# 安裝完成後要跳出「是否立即執行」的勾選框(ExitDialog),需要 UI + Util 這兩個
+# 官方擴充套件；版本要釘住跟核心工具一樣的 5.0.2,不然預設抓到的最新版
+# 可能跟 WiX 5 核心不相容。
+$existingExt = wix extension list -g 2>$null
+if ($existingExt -notmatch "WixToolset\.UI\.wixext") {
+    wix extension add -g WixToolset.UI.wixext/5.0.2
+}
+if ($existingExt -notmatch "WixToolset\.Util\.wixext") {
+    wix extension add -g WixToolset.Util.wixext/5.0.2
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $distDir = Join-Path (Split-Path -Parent $scriptDir) "Dist"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 
 Push-Location $scriptDir
 try {
-    wix build Uninstall-McAfee.wxs -arch x64 -o (Join-Path $distDir "Uninstall-McAfee.msi")
+    wix build Uninstall-McAfee.wxs -arch x64 -ext WixToolset.UI.wixext -ext WixToolset.Util.wixext -o (Join-Path $distDir "Uninstall-McAfee.msi")
 } finally {
     Pop-Location
 }
+
+Remove-Item (Join-Path $distDir "Uninstall-McAfee.wixpdb") -ErrorAction SilentlyContinue
 
 Write-Host "完成：$distDir\Uninstall-McAfee.msi" -ForegroundColor Green

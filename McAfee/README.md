@@ -36,11 +36,13 @@ Checkpoint-Computer -Description "Before-McAfee-Removal-Tool" -RestorePointType 
 
 1. 雙擊 `Uninstall-McAfee.msi`
 2. 跳出 UAC 提示,按「是」授權
-3. 安裝過程會自動執行移除腳本,接著會跳出 **McAfee 官方的移除精靈視窗**,依畫面指示點過去即可(這一步是 McAfee 自己的設計,無法跳過)
-4. 完成後,可在 `C:\Program Files\Uninstall-McAfee-Tool\Uninstall-McAfee.log` 查看完整執行紀錄,確認 McAfee 是否移除成功
-5. 想重跑一次,先在「設定 → 應用程式」移除 **Uninstall McAfee Tool**,再重新雙擊 msi 即可(這個安裝包本身不是要長期保留的軟體,只是包裝移除動作用的載體)
+3. 跑完安裝精靈,最後一頁「完成」畫面上有個**預設打勾**的選項「安裝完成後立即執行 McAfee 解除安裝」,按「完成」就會直接開始執行(不想現在執行的話,取消打勾再按完成即可,之後要跑再用第 5 點的捷徑)
+4. 接著會跳出 **McAfee 官方的移除精靈視窗**,依畫面指示點過去即可(這一步是 McAfee 自己的設計,無法跳過);完成後可在 `C:\Program Files\Uninstall-McAfee-Tool\Uninstall-McAfee.log` 查看完整執行紀錄,確認 McAfee 是否移除成功
+5. 想再跑一次(例如 McAfee 之後又被裝回來),不需要重新安裝 msi:直接在**開始功能表 → Uninstall McAfee Tool → 解除安裝 McAfee** 點一下即可,行為跟第 3、4 點完全一樣
 
-> 這個 msi 是用 [WiX Toolset](https://wixtoolset.org/) 從同目錄的 [`Uninstall-McAfee.ps1`](./Uninstall-McAfee.ps1) 打包出來的,行為與方法 B 完全一致,只是省去手動開 PowerShell 的步驟。維護者如需重新編譯,見 [`installer/build-msi.ps1`](./installer/build-msi.ps1)。
+> 這個 msi 是用 [WiX Toolset](https://wixtoolset.org/)(含 UI + Util 官方擴充套件)從同目錄的 [`Uninstall-McAfee.ps1`](./Uninstall-McAfee.ps1) 打包出來的,實際執行的腳本內容與方法 B 完全一致,只是多包了一層安裝精靈跟開始功能表捷徑。維護者如需重新編譯,見 [`installer/build-msi.ps1`](./installer/build-msi.ps1)。
+>
+> **技術細節(為什麼不是安裝當下直接靜默觸發,而是要多一個「完成」畫面的勾選框)**:MSI 的 `InstallExecuteSequence`(不管 CustomAction 設 immediate 還是 deferred)實際上都是由 Windows Installer 的 `msiserver` 服務在背景的 Session 0 執行,那裡沒有桌面,MCPR 的視窗顯示不出來。這裡改用 Windows Installer 官方支援的「安裝完成後啟動應用程式」機制(`ExitDialog` 的完成按鈕 + `WixShellExecTarget`),讓啟動動作發生在使用者當下的互動式工作階段裡,視窗才顯示得出來、也才能正常點擊。
 
 ### 方法 B:手動執行 PowerShell 腳本
 

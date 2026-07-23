@@ -1,0 +1,3 @@
+# WiX Toolset 本機擴充套件快取(執行 `wix extension add` 沒加 -g 時會產生在專案目錄)
+.wix/
+*.wixpdb

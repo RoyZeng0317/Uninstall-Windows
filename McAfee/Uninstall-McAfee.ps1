@@ -8,11 +8,13 @@ McAfee Consumer Product Removal 工具(MCPR.exe),下載後驗證數位簽章
 
 param(
     [switch]$SkipRestorePoint,
-    # 由 MSI 安裝程式的 CustomAction 呼叫時帶入:略過自我提權判斷與所有
-    # 「是否繼續」互動式提示(改成失敗就警告後直接繼續,不中斷)。
+    # 選用:略過自我提權判斷與所有「是否繼續」互動式提示(改成失敗就警告後
+    # 直接繼續,不中斷),並把過程寫進同目錄的 Uninstall-McAfee.log。
     # 注意:MCPR.exe 本身一定會跳出視窗(McAfee 官方工具沒有可靠的靜默安裝
     # 開關,新版已移除 -s 靜默參數),所以就算是 -Unattended 模式,還是需要
-    # 使用者手動點過 MCPR 的精靈畫面。
+    # 使用者手動點過 MCPR 的精靈畫面。msi 安裝包(見 installer/*.wxs)是在
+    # 使用者當下的互動式工作階段啟動這支腳本(不是背景執行),所以不會帶
+    # -Unattended,直接沿用一般的自我提權 + 互動式提示。
     [switch]$Unattended
 )
 
