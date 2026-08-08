@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="Uninstall OneDrive Tool"
+           Manufacturer="Uninstall-Windows Toolkit"
+           Version="1.0.0.0"
+           UpgradeCode="50CDAA56-FC25-48B9-A371-0789F0D7455C"
+           Scope="perMachine"
+           Language="1028"
+           Codepage="65001">
+
+    <SummaryInformation Description="徹底移除 OneDrive 的安裝程式(當控制台/設定 App 移除不乾淨時使用)" />
+
+    <MajorUpgrade DowngradeErrorMessage="已安裝較新版本的 Uninstall OneDrive Tool,請先移除。" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Uninstall-OneDrive-Tool">
+        <Component Id="ScriptFiles" Guid="A076C170-290C-4FA5-80A8-472FE589A25D">
+          <File Id="UninstallOneDrivePs1" Source="..\Uninstall-OneDrive.ps1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Uninstall OneDrive Tool" Level="1">
+      <ComponentRef Id="ScriptFiles" />
+    </Feature>
+
+    <!--
+      OneDriveSetup.exe /uninstall 本身就是靜默執行(不會跳出精靈視窗,跟 MCPR.exe 不同),
+      所以可以直接沿用 EdgeRemoval 的寫法:在 InstallExecuteSequence 裡跑腳本即可,
+      不需要像 McAfee 那樣改用「安裝完成後啟動應用程式」來取得互動式桌面。
+
+      Execute="deferred" + Impersonate="no" → 以 SYSTEM 身分於提升的安裝工作階段執行,
+      腳本本身以 -Unattended 呼叫,略過自我提權判斷與所有互動式提示(Session 0 無桌面)。
+      Return="ignore" → 移除本體是否完全成功不影響「安裝」本身回報成功,
+      結果請查看安裝目錄下的 Uninstall-OneDrive.log。
+    -->
+    <CustomAction Id="RunUninstallOneDrive"
+                  Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[SystemFolder]WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]Uninstall-OneDrive.ps1&quot; -Unattended"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RunUninstallOneDrive" After="InstallFiles" Condition="NOT Installed" />
+    </InstallExecuteSequence>
+  </Package>
+</Wix>
